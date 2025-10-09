@@ -1,0 +1,30 @@
+# Compiler files
+cache/
+out/
+
+# Ignores development broadcast logs
+!/broadcast
+/broadcast/*/31337/
+/broadcast/**/dry-run/
+
+# Docs
+docs/
+
+# Build artifacts
+/out
+/cache
+
+# Dependency files
+/node_modules
+
+# Local environment variables
+.env
+.env.*
+
+# Specific Foundry/EVM artifacts
+foundry.toml
+# 任何存储敏感私钥或配置的文件
+secrets.json
+
+# 忽略所有依赖库
+/lib
