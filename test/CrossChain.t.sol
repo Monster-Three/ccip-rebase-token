@@ -24,6 +24,7 @@ contract CrossChain is Test {
     address user = makeAddr("user");
     uint256 sepoliaFork;
     uint256 arbSepoliaFork;
+    uint256 SEND_VALUE = 1e5;
 
     CCIPLocalSimulatorFork ccipLocalSimulatorFork;
 
@@ -60,6 +61,7 @@ contract CrossChain is Test {
             sepoliaNetworkDetails.routerAddress
         );
         sepoliaToken.grantMintAndBurnRole(address(vault));
+        sepoliaToken.grantMintAndBurnRole(address(sepoliaPool));
         RegistryModuleOwnerCustom(
             sepoliaNetworkDetails.registryModuleOwnerCustomAddress
         ).registerAdminViaOwner(address(sepoliaToken));
@@ -79,17 +81,19 @@ contract CrossChain is Test {
         arbSepoliaPool = new RebaseTokenPool(
             IERC20(address(arbSepoliaToken)),
             new address[](0),
-            sepoliaNetworkDetails.rmnProxyAddress,
-            sepoliaNetworkDetails.routerAddress
+            arbSepoliaNetworkDetails.rmnProxyAddress,
+            arbSepoliaNetworkDetails.routerAddress
         );
         arbSepoliaToken.grantMintAndBurnRole(address(arbSepoliaPool));
         RegistryModuleOwnerCustom(
-            sepoliaNetworkDetails.registryModuleOwnerCustomAddress
+            arbSepoliaNetworkDetails.registryModuleOwnerCustomAddress
         ).registerAdminViaOwner(address(arbSepoliaToken));
-        TokenAdminRegistry(sepoliaNetworkDetails.tokenAdminRegistryAddress)
+        TokenAdminRegistry(arbSepoliaNetworkDetails.tokenAdminRegistryAddress)
             .acceptAdminRole(address(arbSepoliaToken));
-        TokenAdminRegistry(sepoliaNetworkDetails.tokenAdminRegistryAddress)
+        TokenAdminRegistry(arbSepoliaNetworkDetails.tokenAdminRegistryAddress)
             .setPool(address(arbSepoliaToken), address(arbSepoliaPool));
+        vm.stopPrank();
+
         configureTokenPool(
             sepoliaFork,
             address(sepoliaPool),
@@ -104,7 +108,6 @@ contract CrossChain is Test {
             address(sepoliaPool),
             address(sepoliaToken)
         );
-        vm.stopPrank();
     }
 
     function configureTokenPool(
@@ -173,7 +176,9 @@ contract CrossChain is Test {
             data: "",
             tokenAmounts: tokenAmounts,
             feeToken: localNetworkDetails.linkAddress,
-            extraArgs: Client._argsToBytes(Client.EVMExtraArgsV1({gasLimit: 0}))
+            extraArgs: Client._argsToBytes(
+                Client.EVMExtraArgsV1({gasLimit: 500_000})
+            )
         });
 
         uint256 fee = IRouterClient(localNetworkDetails.routerAddress).getFee(
@@ -210,5 +215,33 @@ contract CrossChain is Test {
         uint256 remoteUserInterestRate = remoteToken.getUserInteretsRate(user);
         assertEq(remoteUserInterestRate, localUserInterestRate);
         /* 当代码写到这里的时候，用了'forge build --via-ir'编译，如果想了解更多，可以去看cyfirn上的'Assembly and Formal Verification'课程 */
+    }
+
+    function testBridgeAllTokens() public {
+        vm.selectFork(sepoliaFork);
+        vm.deal(user, SEND_VALUE);
+        vm.prank(user);
+        Vault(payable(address(vault))).deposit{value: SEND_VALUE}(SEND_VALUE);
+        assertEq(sepoliaToken.balanceOf(user), SEND_VALUE);
+        bridgeTokens(
+            SEND_VALUE,
+            sepoliaFork,
+            arbSepoliaFork,
+            sepoliaNetworkDetails,
+            arbSepoliaNetworkDetails,
+            sepoliaToken,
+            arbSepoliaToken
+        );
+        // vm.selectFork(arbSepoliaFork);
+        // vm.warp(block.timestamp + 20 minutes);
+        // bridgeTokens(
+        //     arbSepoliaToken.balanceOf(user),
+        //     sepoliaFork,
+        //     arbSepoliaFork,
+        //     sepoliaNetworkDetails,
+        //     arbSepoliaNetworkDetails,
+        //     sepoliaToken,
+        //     arbSepoliaToken
+        // );
     }
 }

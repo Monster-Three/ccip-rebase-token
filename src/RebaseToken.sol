@@ -106,7 +106,8 @@ contract RebaseToken is ERC20, Ownable, AccessControl {
     由于其抗碰撞性，keccak256 经常用于为各种实体生成唯一的 ID。
     例子： 给NFT（非同质化代币）生成一个唯一的 tokenId，或者为链下数据创建一个唯一的哈希引用。
     .... */
-    bytes32 private constant MINT_AND_BURN_FUNCTION = keccak256("MINT_AND_BURN_FUNCTION");
+    bytes32 private constant MINT_AND_BURN_FUNCTION =
+        keccak256("MINT_AND_BURN_FUNCTION");
 
     //////////////
     /// Events ///
@@ -131,7 +132,10 @@ contract RebaseToken is ERC20, Ownable, AccessControl {
      */
     function setInterestRate(uint256 _newInteretrate) public onlyOwner {
         if (_newInteretrate >= s_interestrate) {
-            revert Rebasetoken__InterestRateCanOnlyDecrease(s_interestrate, _newInteretrate);
+            revert Rebasetoken__InterestRateCanOnlyDecrease(
+                s_interestrate,
+                _newInteretrate
+            );
         }
         s_interestrate = _newInteretrate;
         emit InterestRateSet(_newInteretrate);
@@ -151,7 +155,11 @@ contract RebaseToken is ERC20, Ownable, AccessControl {
      * @param _to The user to mint the tokens to
      * @param _amount The amount of tokens to mint
      */
-    function mint(address _to, uint256 _amount, uint256 _userInterestRate) external onlyRole(MINT_AND_BURN_FUNCTION) {
+    function mint(
+        address _to,
+        uint256 _amount,
+        uint256 _userInterestRate
+    ) external onlyRole(MINT_AND_BURN_FUNCTION) {
         // 假如A合约继承了B合约，A合约可以直接在自己的函数签名里面调用B合约的modifier吗？
         /* 
         是的，可以。
@@ -175,7 +183,10 @@ contract RebaseToken is ERC20, Ownable, AccessControl {
      * @param _from The user to burn tokens from
      * @param _amount The amount of tokens to burn
      */
-    function burn(address _from, uint256 _amount) external onlyRole(MINT_AND_BURN_FUNCTION) {
+    function burn(
+        address _from,
+        uint256 _amount
+    ) external onlyRole(MINT_AND_BURN_FUNCTION) {
         /* 在现实生活中，由于信号有一定的延迟，_mintAccruedInterest可能会少算到一点利息，我们称为dust。
         如果这里的_amount为type(uint256).max的最大值，则会减轻dust的影响 */
         if (_amount == type(uint256).max) {
@@ -223,7 +234,10 @@ contract RebaseToken is ERC20, Ownable, AccessControl {
         能够明确地指明“我要调用父合约的那个实现”。
         如果一个父合约的函数没有 virtual 关键字，那么它就不能被子合约重写。在这种情况下，子合约会直接继承并使用这个函数，
         无需（也无法）使用 super 关键字来调用它，因为没有一个“被重写的父函数”需要 super 来区分。 */
-        return super.balanceOf(_user) * _calculateUserAccumulatedInterestSinceLastUpdated(_user) / PRECISION_FACTOR;
+        return
+            (super.balanceOf(_user) *
+                _calculateUserAccumulatedInterestSinceLastUpdated(_user)) /
+            PRECISION_FACTOR;
     }
 
     /**
@@ -232,7 +246,10 @@ contract RebaseToken is ERC20, Ownable, AccessControl {
      * @param _amount The amount of token to transfer
      * @return True, if the transfer was successful
      */
-    function transfer(address _recipient, uint256 _amount) public override returns (bool) {
+    function transfer(
+        address _recipient,
+        uint256 _amount
+    ) public override returns (bool) {
         /* this two '_mintAccruedInterest' solve the problem that when msg.sender transfer balance to the '_recipient', it 
         could change the interest rate for '_recipient' */
         _mintAccruedInterest(msg.sender);
@@ -253,23 +270,25 @@ contract RebaseToken is ERC20, Ownable, AccessControl {
      * @param _amount The amount of tokens to transfer
      * @return True, if the transfer was successful
      */
-    function transferFrom(address _sender, address _recipient, uint256 _amount) public override returns (bool) {
+    function transferFrom(
+        address _sender,
+        address _recipient,
+        uint256 _amount
+    ) public override returns (bool) {
         _mintAccruedInterest(_sender);
         _mintAccruedInterest(_recipient);
         if (_amount == type(uint256).max) {
-            _amount == balanceOf(_sender);
+            _amount = balanceOf(_sender);
         }
         if (balanceOf(_recipient) == 0) {
             s_userInterestRate[_recipient] = s_userInterestRate[_sender];
         }
-        return super.transfer(_recipient, _amount);
+        return super.transferFrom(_sender, _recipient, _amount);
     }
 
-    function _calculateUserAccumulatedInterestSinceLastUpdated(address _user)
-        internal
-        view
-        returns (uint256 linearInterest)
-    {
+    function _calculateUserAccumulatedInterestSinceLastUpdated(
+        address _user
+    ) internal view returns (uint256 linearInterest) {
         /* 
         We need to calculate the interest that has accumulated since the last update
         This is going to be linear growth with time
@@ -281,8 +300,12 @@ contract RebaseToken is ERC20, Ownable, AccessControl {
         interest rate: 0.5 tokens per second
         time elapsed is 2 seconds
         10 + (10 * 0.5 * 2 ) = 20 */
-        uint256 timeElapsed = block.timestamp - s_userLastUpdatedTimestamp[_user];
-        linearInterest = PRECISION_FACTOR + s_userInterestRate[_user] * timeElapsed;
+        uint256 timeElapsed = block.timestamp -
+            s_userLastUpdatedTimestamp[_user];
+        linearInterest =
+            PRECISION_FACTOR +
+            s_userInterestRate[_user] *
+            timeElapsed;
     }
 
     /**
@@ -316,7 +339,9 @@ contract RebaseToken is ERC20, Ownable, AccessControl {
      * @param _user The user to get the interest rate for
      * return: The interest rate for the user
      */
-    function getUserInteretsRate(address _user) public view returns (uint256 interestRate) {
+    function getUserInteretsRate(
+        address _user
+    ) public view returns (uint256 interestRate) {
         return s_userInterestRate[_user];
     }
 }
